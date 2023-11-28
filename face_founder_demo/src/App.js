@@ -28,11 +28,11 @@ function App() {
   const [ bigImage, setBigImages ] = useState([]);
   const [ loading, setLoading ] = useState(false);
 
-  useEffect(() => {
-    if(imageFolder !== null) {
-      findImages();
-    }
-  }, [imageFolder]);
+  // useEffect(() => {
+  //   if(imageFolder !== null) {
+  //     findImages();
+  //   }
+  // }, [imageFolder]);
 
   const canvasElement = useRef(null);
   const imageElement = useRef(null);
@@ -261,7 +261,8 @@ function App() {
               <Form.File label="Select folder of images" custom onChange={onChangeImageFolder} webkitdirectory="true" mozdirectory="true" />
             </Col>
             <Col>
-              <Form.File label="Select person's image" custom disabled = { (imageFolder && recognitionKey && detectionKey) ? false : true }  onChange={onChangePersonPhoto} />
+              {/* <Form.File label="Select person's image" custom disabled = { (imageFolder && recognitionKey && detectionKey) ? false : true }  onChange={onChangePersonPhoto} /> */}
+              <Form.File label="Select person's image" custom onChange={onChangePersonPhoto} />
             </Col>
         </Row>
         <Row className="marginTop-15">
