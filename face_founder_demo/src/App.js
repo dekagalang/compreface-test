@@ -6,27 +6,27 @@ import UploadedImage from './components/UploadedImge';
 import DisplayFoundImages from './components/DisplayFoundImages';
 import DisplayCropedImage from './components/DisplayCropedImages';
 import { confirmAlert } from 'react-confirm-alert';
-import {NotificationContainer, NotificationManager} from 'react-notifications';
+import { NotificationContainer, NotificationManager } from 'react-notifications';
 import ShowBadImages from './components/ShowBadImages';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 
 function App() {
-  const [ personsImage, setPersonsImage ] = useState(null);
-  const [ imageFolder, setImageFolder ] = useState(null);
-  const [ uploadedImage, setUploadedImage ] = useState(null);
-  const [ foundFaces, setFoundFaces ] = useState([]);
-  const [ counter, setCounter ] = useState(0);
-  const [ recognitionKey, setRecognitionKey ] = useState(null);
-  const [ detectionKey, setDetectionKey ] = useState(null);
-  const [ rate, setRate ] = useState(90);
-  const [ fullData, setFullData ] = useState(null)
-  const [ similarityRate, setSimilarityRate ] = useState([])
-  const [ recognitionError, setRecognitionError ] = useState(false);
-  const [ recError, setRecError ] = useState([]);
-  const [ detError, setDetError ] = useState([]);
-  const [ showInvalidFiles, setVisibilityInvalidFiles ] = useState(false);
-  const [ bigImage, setBigImages ] = useState([]);
-  const [ loading, setLoading ] = useState(false);
+  const [personsImage, setPersonsImage] = useState(null);
+  const [imageFolder, setImageFolder] = useState(null);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [foundFaces, setFoundFaces] = useState([]);
+  const [counter, setCounter] = useState(0);
+  const [recognitionKey, setRecognitionKey] = useState(null);
+  const [detectionKey, setDetectionKey] = useState(null);
+  const [rate, setRate] = useState(90);
+  const [fullData, setFullData] = useState(null)
+  const [similarityRate, setSimilarityRate] = useState([])
+  const [recognitionError, setRecognitionError] = useState(false);
+  const [recError, setRecError] = useState([]);
+  const [detError, setDetError] = useState([]);
+  const [showInvalidFiles, setVisibilityInvalidFiles] = useState(false);
+  const [bigImage, setBigImages] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // useEffect(() => {
   //   if(imageFolder !== null) {
@@ -46,14 +46,14 @@ function App() {
   let faceCollection = recognitionService.getFaceCollection();
   let detectionService = core.initFaceDetectionService(detectionKey)
 
-  const removeDublicates = (array) =>{
+  const removeDublicates = (array) => {
     let tempArray = [];
     let saveDublicate = [];
 
-    for(let i = 0; i < array.length; i++){
-        if(!saveDublicate.includes(array[i].subject)) tempArray.push([array[i].subject, array[i].similarity])
+    for (let i = 0; i < array.length; i++) {
+      if (!saveDublicate.includes(array[i].subject)) tempArray.push([array[i].subject, array[i].similarity])
 
-        saveDublicate.push(array[i].subject)
+      saveDublicate.push(array[i].subject)
     }
 
     return tempArray;
@@ -68,41 +68,62 @@ function App() {
   }
 
   const onChangePersonPhoto = e => {
-    if(e.target.files[0]){
+    if (e.target.files[0]) {
       setLoading(true)
       setFoundFaces([]);
       setCounter(0)
       setRecError(prevArray => [...new Set(prevArray)])
       setVisibilityInvalidFiles(true);
 
-      const reader = new FileReader();
-      reader.onload = myEvent => {
-        setUploadedImage( myEvent.target.result )
-        let sendata = myEvent.target.result.split(',')[1];
+      // const reader = new FileReader();
+      // reader.onload = myEvent => {
+      let formData = new FormData();
+      // setUploadedImage(myEvent.target.result)
+      // let sendata = myEvent.target.result.split(',')[1];
+      let photo = e.target.files[0];
 
-        recognitionService.recognize(sendata, {limit:10, prediction_count: 100, face_plugins: "age,gender"})
-          .then(res => {
-            setLoading(false)
-            setFullData(res.result[0].subjects);
-            let filtered = res.result[0].subjects.filter(subobj => subobj.similarity * 100 >= rate)
-            let tmp = removeDublicates(filtered)
+      formData.append("file", photo);
 
-            setSimilarityRate(tmp)
-            setRecognitionError(true)
-
-            tmp.forEach(subject => {
-              for(let i = 0; i < Object.values(imageFolder).length; i++){
-                  if(subject[0] === imageFolder[i]['name']) setFoundFaces(oldFaces => [...oldFaces, imageFolder[i]])
-              }
-            })
+      // recognitionService.recognize(sendata, {limit:10, prediction_count: 100, face_plugins: "age,gender"})
+      fetch('http://localhost:8000/api/v1/recognition/recognize?face_plugins=landmarks&face_plugins=gender&face_plugins=age&face_plugins=pose',
+        {
+          method: "POST",
+          headers: {
+            "x-api-key": recognitionKey
+          },
+          body: formData
+        }
+      )
+        .then(r => r.json())
+        .then(res => {
+          setLoading(false)
+          const aface = res.result[0]
+          // console.log(aface)
+          let ctx = canvasElement.current.getContext('2d');
+          ctx.fillStyle = '#27C224';
+          getBase64(photo).then(customData => {
+            // console.log(customData.base64)
+            setPersonsImage(customData.base64)
+            ctx.drawImage(imageElement.current, aface.box.x_min, aface.box.y_min, aface.box.x_max - aface.box.x_min, aface.box.y_max - aface.box.y_min, 0, 0, aface.box.x_max - aface.box.x_min, aface.box.y_max - aface.box.y_min);
           })
-          .catch(error => {
-            setRecognitionError(false)
-            setLoading(false)
-            NotificationManager.error("No face found in given image", "Error", 3000)
-          })
-      }
-      reader.readAsDataURL(e.target.files[0])
+
+          // setSimilarityRate(tmp)
+          setRecognitionError(true)
+
+          // tmp.forEach(subject => {
+          //   for (let i = 0; i < Object.values(imageFolder).length; i++) {
+          //     if (subject[0] === imageFolder[i]['name']) setFoundFaces(oldFaces => [...oldFaces, imageFolder[i]])
+          //   }
+          // })
+        })
+        .catch(error => {
+          // console.log(error)
+          setRecognitionError(false)
+          setLoading(false)
+          NotificationManager.error("No face found in given image", "Error", 3000)
+        })
+      // }
+      // reader.readAsDataURL(e.target.files[0])
     }
   }
 
@@ -116,8 +137,8 @@ function App() {
     setSimilarityRate(tmp)
 
     tmp.forEach(subject => {
-      for(let i = 0; i < Object.values(imageFolder).length; i++ ){
-        if(subject[0] === imageFolder[i]['name']) setFoundFaces(oldFaces => [...oldFaces, imageFolder[i]])
+      for (let i = 0; i < Object.values(imageFolder).length; i++) {
+        if (subject[0] === imageFolder[i]['name']) setFoundFaces(oldFaces => [...oldFaces, imageFolder[i]])
       }
     })
   }
@@ -142,10 +163,10 @@ function App() {
   const drawFace = (ctx, aface, index, fileName, lengthOfDetectedFaces, callback, itaration) => {
     ctx.drawImage(imageElement.current, aface.box.x_min, aface.box.y_min, aface.box.x_max - aface.box.x_min, aface.box.y_max - aface.box.y_min, 0, 0, aface.box.x_max - aface.box.x_min, aface.box.y_max - aface.box.y_min);
 
-    canvasElement.current.toBlob( blob => {
+    canvasElement.current.toBlob(blob => {
       faceCollection.add(blob, fileName)
         .then(data => {
-          if(lengthOfDetectedFaces === index + 1){
+          if (lengthOfDetectedFaces === index + 1) {
             itaration++;
             setCounter(itaration);
             callback(itaration)
@@ -154,7 +175,7 @@ function App() {
         })
         .catch(error => {
           setRecError(prevArray => [...prevArray, fileName]);
-          if(lengthOfDetectedFaces === index + 1){
+          if (lengthOfDetectedFaces === index + 1) {
             confirmAlert({
               title: 'Recognition error',
               message: `Face not found in ${fileName}`,
@@ -187,13 +208,13 @@ function App() {
 
     const uploadRecursivley = (intarator) => {
       // stop processing at the end of file
-      if(!imageFolder.item(intarator)){
+      if (!imageFolder.item(intarator)) {
         NotificationManager.success("Compeleted!", "Image processing completed!", 3000)
         return null;
       }
 
       // check size of image
-      if(imageFolder.item(intarator).size < 5000000){
+      if (imageFolder.item(intarator).size < 5000000) {
         // get base64 format of image
         getBase64(imageFolder.item(intarator))
           .then(customData => {
@@ -226,9 +247,9 @@ function App() {
                   closeOnEscape: false
                 });
               })
-            })
-            .catch(error => console.log(error))
-      }else {
+          })
+          .catch(error => console.log(error))
+      } else {
         setBigImages(prevArray => [...prevArray, imageFolder.item(intarator).name])
         intarator++;
         setCounter(intarator)
@@ -238,6 +259,7 @@ function App() {
 
     uploadRecursivley(internalCounter)
   }
+  // console.log(canvasElement, imageElement)
 
   return (
     <Container className="custom-container" fluid>
@@ -257,52 +279,54 @@ function App() {
           </Col>
         </Row>
         <Row>
-            <Col>
-              <Form.File label="Select folder of images" custom onChange={onChangeImageFolder} webkitdirectory="true" mozdirectory="true" />
-            </Col>
-            <Col>
-              {/* <Form.File label="Select person's image" custom disabled = { (imageFolder && recognitionKey && detectionKey) ? false : true }  onChange={onChangePersonPhoto} /> */}
-              <Form.File label="Select person's image" custom onChange={onChangePersonPhoto} />
-            </Col>
+          <Col>
+            <Form.File label="Select folder of images" custom onChange={onChangeImageFolder} webkitdirectory="true" mozdirectory="true" />
+          </Col>
+          <Col>
+            {/* <Form.File label="Select person's image" custom disabled = { (imageFolder && recognitionKey && detectionKey) ? false : true }  onChange={onChangePersonPhoto} /> */}
+            <Form.File label="Select person's image" custom onChange={onChangePersonPhoto} />
+          </Col>
         </Row>
         <Row className="marginTop-15">
           <Col>
             <Form.Group>
               <Form.Label>Similarity rate is {rate}%</Form.Label>
-              <Form.Control  disabled={ recognitionError ? false: true } value={rate} onChange={onRateChanges} type="range" />
+              <Form.Control disabled={recognitionError ? false : true} value={rate} onChange={onRateChanges} type="range" />
             </Form.Group>
           </Col>
         </Row>
       </Form>
       <Row>
         <Col md={3}>
-          { uploadedImage && <UploadedImage uploadedImage = { uploadedImage } />}
-          { showInvalidFiles && <div>
-            { recError.length && <ShowBadImages data={recError} badTitle="Recognition error occured in" />}
-            { detError.length && <ShowBadImages data={detError} badTitle="Detection error occured in" />}
-            { bigImage.length && <ShowBadImages data={bigImage} badTitle="Oversized images" />}
-          </div> }
+          {uploadedImage && <UploadedImage uploadedImage={uploadedImage} />}
+          {showInvalidFiles && <div>
+            {recError.length && <ShowBadImages data={recError} badTitle="Recognition error occured in" />}
+            {detError.length && <ShowBadImages data={detError} badTitle="Detection error occured in" />}
+            {bigImage.length && <ShowBadImages data={bigImage} badTitle="Oversized images" />}
+          </div>}
         </Col>
         <Col md={9}>
-          { loading &&  <div style={{ margin: "20px auto" }} >
+          {loading && <div style={{ margin: "20px auto" }} >
             <Spinner animation="grow" >
               <span style={{ marginLeft: "45px" }} >Loading...</span>
             </Spinner>
           </div>}
 
-          { foundFaces.length > 0 && <DisplayFoundImages foundFaces = { foundFaces } similarityRate = { similarityRate } /> }
+          {foundFaces.length > 0 && <DisplayFoundImages foundFaces={foundFaces} similarityRate={similarityRate} />}
         </Col>
       </Row>
-      { counter > 0 && <Row className="marginTop-15">
+      {counter > 0 && <Row className="marginTop-15">
         <Col md={12} >
-           <ProgressBar animated now={ ((counter + 1)/Object.values(imageFolder).length) * 100 } />
-          { counter === Object.values(imageFolder).length ? <div>
+          <ProgressBar animated now={((counter + 1) / Object.values(imageFolder).length) * 100} />
+          {counter === Object.values(imageFolder).length ? <div>
             <span>Done you can select persons image</span>
           </div> : <div> <span>Processing images</span> </div>}
         </Col>
       </Row>}
-      <Row> { personsImage && <DisplayCropedImage personsImage = { personsImage } imageElement = { imageElement } canvasElement = { canvasElement } />} </Row>
-      <NotificationContainer/>
+      <Row>
+        <DisplayCropedImage personsImage={personsImage} imageElement={imageElement} canvasElement={canvasElement} />
+      </Row>
+      <NotificationContainer />
     </Container>
   );
 }

@@ -3,13 +3,14 @@ import { Container, Row, Col, Image } from 'react-bootstrap';
 
 const DisplayCropedImage = ({ personsImage, imageElement, canvasElement }) => {
     return (
-        <Container style={{ display: 'none' }}>
+        <Container>
             <Row>
                 <Col>
-                    <canvas width="700" height="850" ref={canvasElement}></canvas>
+                    <canvas ref={canvasElement}></canvas>
                 </Col>
                 <Col>
-                    <Image alt="Exadel" rounded  src={ personsImage }  ref={imageElement} />
+                    <Image style={{ width: 700 }} alt="Exadel" rounded src={personsImage} ref={imageElement} />
+                    <div></div>
                 </Col>
             </Row>
         </Container>
